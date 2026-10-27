@@ -36,3 +36,79 @@ html.collapsed .sidebar .brand .collapse{right:4px;width:25px;height:29px;font-s
 #modalFields .field.full{grid-column:1/-1}
 #modalFields input,#modalFields select{width:100%;min-width:0}
 @media(max-width:700px){#modalFields{grid-template-columns:1fr!important}.table-tools{flex-wrap:wrap}.table-tools .search-box{width:100%}}
+
+/* AURUM ERP — warm ivory & jewellery-gold theme (reference-inspired) */
+:root{
+  --primary:#b77a12;
+  --primary-dark:#8d5b08;
+  --primary-soft:#f5e7c5;
+  --blue:#9b6a17;
+  --blue-soft:#f5ead3;
+  --bg:#f4efe5;
+  --surface:#fffaf1;
+  --border:#e6d9c2;
+  --ink:#30271c;
+  --muted:#817564;
+  --shadow:0 8px 24px #65420b0d;
+}
+body{background:var(--bg);color:var(--ink)}
+.sidebar{background:#fffaf1;border-right:1px solid var(--border);color:var(--ink)}
+.sidebar .brand{position:sticky;top:0;z-index:50;background:#fffaf1;border-bottom:1px solid #eee2ce;min-height:78px;flex:0 0 78px;box-shadow:0 3px 10px #51360708}
+.brand-mark{background:linear-gradient(145deg,#d7a33a,#a96b08);color:#fffaf1;box-shadow:0 5px 14px #b77a122e;border-radius:11px}
+.brand-text strong{color:#30271c}.brand-text strong span{color:#b77a12}.brand-text small{color:#8a7960}
+.sidebar .collapse{background:#fffaf1;border-color:#e6d9c2;color:#8d5b08}
+.sidebar .nav-label{color:#a28d6c}
+.sidebar .nav-item{color:#5d5141}
+.sidebar .nav-item>span{color:#a77a2e}
+.sidebar .nav-item:hover{background:#f8efdf;color:#8d5b08}
+.sidebar .nav-item.active{background:#f2dfb4;color:#805108;box-shadow:inset 3px 0 #b77a12}
+.sidebar .nav-item.active>span{color:#9a650c}
+.sidebar .nav-item em{background:#f5e7c5;color:#8d5b08}
+.sidebar .nav-item em.orange{background:#faead0;color:#a35e0a}
+.sidebar .sidebar-bottom{background:#f8efdf;border-color:#ead8b8}
+.sidebar .help-icon{background:#f0ddb0;color:#8d5b08}
+.sidebar .sidebar-bottom b{color:#30271c}
+.sidebar .sidebar-bottom small,.sidebar .sidebar-bottom>span{color:#817564}
+.sidebar .profile{border-top:1px solid #eee2ce}
+.sidebar .profile-info b{color:#30271c}.sidebar .profile-info small{color:#817564}
+.sidebar .avatar{background:#f0ddb0;color:#8d5b08}
+.topbar{background:#fffaf1;border-bottom-color:var(--border)}
+.breadcrumbs strong{color:#30271c}
+.demo-pill{color:#8d5b08;background:#f5e7c5}.demo-pill i{background:#b77a12}
+.icon-btn{background:#fffdf8;border-color:#e6d9c2;color:#9b6a17}
+.content{background:transparent}
+.eyebrow{color:#a36b0c}
+.page-head h1{color:#30271c}
+.btn{border-color:#e1d1b5;background:#fffaf1;color:#5d4930}
+.btn:hover{border-color:#c7973c;box-shadow:0 5px 14px #a46b1118}
+.btn.primary,.btn.blue{background:#b77a12;border-color:#b77a12;color:#fffaf1}
+.btn.primary:hover,.btn.blue:hover{background:#8d5b08;border-color:#8d5b08}
+.stat-card{background:#fffaf1;border-color:#e6d9c2;box-shadow:0 5px 0 #8d5b0808,0 12px 24px #65420b08}
+.stat-card:before,.stat-card:nth-child(2):before,.stat-card:nth-child(3):before,.stat-card:nth-child(4):before{background:#b77a12}
+.stat-card:nth-child(2):before{background:#d3a44b}.stat-card:nth-child(3):before{background:#8d5b08}.stat-card:nth-child(4):before{background:#e0c27f}
+.stat-icon,.quick-icon{background:#f5e7c5;color:#8d5b08}
+.stat-value{color:#30271c}
+.panel{background:#fffaf1;border-color:#e6d9c2}
+.panel-head{background:#fbf4e8;border-bottom-color:#eee2ce}
+.panel-head h2{color:#30271c}
+.quick-action{background:#fffaf1;border-color:#e6d9c2}
+.quick-action:hover{border-color:#c7973c;background:#fbf4e8}
+.chart-legend,.chart text{color:#817564;fill:#817564}
+.dot{background:#b77a12!important}
+th{background:#fbf4e8;color:#817564;border-bottom-color:#eee2ce}
+td{border-bottom-color:#f0e6d6;color:#5d5141}
+tbody tr:hover{background:#fbf4e8}.main-cell{color:#30271c}
+.search-box,.filter-select,.field input,.field select,.field textarea{background:#fffdf8;border-color:#e6d9c2;color:#30271c}
+.search-box:focus,input:focus,select:focus{border-color:#c7973c;box-shadow:0 0 0 3px #b77a1218}
+.text-link{color:#9b6a17}.metal-badge{background:#f5e7c5;color:#8d5b08}.metal-badge.silver{background:#ece9e2;color:#68645d}
+.modal{background:#fffaf1;border-color:#e6d9c2}.modal-head,.modal-actions{border-color:#eee2ce}.modal-head h3{color:#30271c}
+.toast{background:#30271c;color:#fffaf1}footer{background:#30271c;border-top-color:#241c13;color:#e9dfcd}footer b{background:#f5e7c5;color:#8d5b08}
+.status.paid,.status.completed,.status.in-stock,.status.delivered{color:#3d7650;background:#e5f1e5}
+.status.pending,.status.in-progress,.status.processing,.status.low-stock{color:#91651b;background:#fbefd3}
+.status.overdue,.status.cancelled,.status.low{color:#a44848;background:#f5e2dd}
+.status.draft,.status.confirmed,.status.ready,.status.active{color:#8d5b08;background:#f5e7c5}
+/* Sidebar branding stays visible while its navigation scrolls. */
+.sidebar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#d8c49f transparent}
+.sidebar .brand{isolation:isolate}
+@media(max-width:760px){.sidebar{box-shadow:12px 0 32px #51360724}.topbar{background:#fffaf1}.sidebar .brand{min-height:74px;flex-basis:74px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
