@@ -145,3 +145,45 @@ body.modal-open{overflow:hidden;}
 
 /* Admin profile dropdown */
 .top-user-wrap{position:relative;display:flex;align-items:center}.top-user{display:flex;align-items:center;gap:9px;border:0;background:transparent;text-align:left;cursor:pointer;color:inherit;padding:4px 2px;border-radius:9px}.top-user:hover{background:#f7f8f5}.top-user>div:nth-child(2){display:flex;flex-direction:column}.top-user b{font-size:11px}.top-user small{font-size:9px;color:var(--muted);margin-top:3px}.admin-chevron{font-size:15px;transition:transform .18s}.top-user[aria-expanded="true"] .admin-chevron{transform:rotate(180deg)}.admin-dropdown{position:absolute;right:0;top:calc(100% + 10px);width:205px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 38px #17212e1f;padding:7px;z-index:90;animation:pop .15s ease}.admin-dropdown[hidden]{display:none}.admin-dropdown-head{display:flex;flex-direction:column;padding:10px;border-bottom:1px solid #eef0f2;margin-bottom:5px}.admin-dropdown-head b{font-size:12px;color:#27323d}.admin-dropdown-head small{font-size:10px;color:var(--muted);margin-top:4px}.admin-logout{width:100%;display:flex;align-items:center;gap:9px;padding:10px;border:0;border-radius:8px;background:#fff;text-align:left;color:#b54747;font-size:12px;font-weight:800;cursor:pointer}.admin-logout:hover{background:#fff1f0}.admin-logout span{font-size:17px}.purchase-delete-confirm{padding:24px 24px 28px;text-align:center;grid-column:1/-1}.purchase-delete-icon{width:44px;height:44px;border-radius:50%;background:#fff0ef;color:#c45252;display:grid;place-items:center;font-size:24px;font-weight:800;margin:0 auto 13px}.purchase-delete-confirm h3{font:800 16px Manrope;margin:0 0 8px;color:#27323d}.purchase-delete-confirm p{font-size:12px;line-height:1.7;color:#6d7782;margin:0 auto;max-width:410px;white-space:normal}.btn.danger-confirm{background:#c45252;border-color:#c45252;color:#fff}.btn.danger-confirm:hover{background:#a93e3e}
+
+/* Compact Sales and Purchase forms: smaller modal, tighter fields, less scrolling */
+.modal{width:min(760px,100%);max-height:calc(100dvh - 36px);}
+.modal-head{padding:12px 16px;}
+.modal-head h3{font-size:15px;}
+.modal-head p{margin-top:3px;}
+#modalFields{gap:9px 12px;padding:12px 16px;}
+#modalFields .field{gap:4px;}
+#modalFields .field label{font-size:10px;}
+#modalFields input,#modalFields select,#modalFields textarea{padding:7px 9px;font-size:11px;border-radius:6px;}
+#modalFields textarea{min-height:48px;}
+#modalFields h3{font-size:11px;margin-top:2px;padding-bottom:5px;}
+#modalFields .field.full h3{margin:5px 0 0;padding-bottom:5px;}
+.modal-actions{padding:10px 16px;}
+.modal-actions .btn{padding:7px 11px;font-size:10px;}
+@media(max-width:760px){#modalFields{gap:9px;padding:11px 12px}.modal-head{padding:12px}.modal-actions{padding:10px 12px}}
+
+/* Keep Sales/Purchase form overlays strictly inside the workspace area:
+   below the top header and to the right of the sidebar. */
+.modal-backdrop{inset:70px 0 0 var(--sidebar);padding:14px;align-items:center;justify-content:center;}
+html.collapsed .modal-backdrop{left:78px;}
+.modal-backdrop .modal{width:min(650px,100%);max-height:calc(100% - 8px);}
+@media(max-width:760px){
+  .modal-backdrop,html.collapsed .modal-backdrop{inset:62px 0 0 0;padding:8px;align-items:center;}
+  .modal-backdrop .modal{width:min(560px,100%);max-height:calc(100% - 8px);}
+}
+
+/* Keep the Sales register Actions column visible while horizontally scrolling */
+.sales-register-table th:last-child,
+.sales-register-table td:last-child{
+  position:sticky;
+  right:0;
+  z-index:2;
+  min-width:118px;
+  width:118px;
+  background:#fffaf0;
+  box-shadow:-7px 0 10px -9px rgba(40,39,28,.45);
+}
+.sales-register-table thead th:last-child{z-index:4;background:#f5efdf;}
+.sales-register-table tbody tr:nth-child(even) td:last-child{background:#fffdf8;}
+.sales-register-table tbody tr:hover td:last-child{background:#f8f0df;}
+.sales-register-table td:last-child{border-left:1px solid #e5d8bf;}
