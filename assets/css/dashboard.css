@@ -112,3 +112,36 @@ tbody tr:hover{background:#fbf4e8}.main-cell{color:#30271c}
 .sidebar .brand{isolation:isolate}
 @media(max-width:760px){.sidebar{box-shadow:12px 0 32px #51360724}.topbar{background:#fffaf1}.sidebar .brand{min-height:74px;flex-basis:74px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Sales order modal: fixed viewport overlay with independently scrollable form */
+.modal-backdrop{position:fixed;inset:0;overflow:hidden;overscroll-behavior:contain;align-items:center;justify-content:center;padding:clamp(8px,2vh,20px);}
+.modal{width:min(980px,100%);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.modal-head{flex:0 0 auto;position:sticky;top:0;z-index:2;background:#fffaf1;}
+#recordForm{display:flex;flex-direction:column;min-height:0;overflow:hidden;flex:1;}
+#modalFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px 22px;overflow-y:auto;overscroll-behavior:contain;min-height:0;flex:1;scrollbar-gutter:stable;align-content:start;}
+#modalFields .field.full{grid-column:1/-1;}
+#modalFields h3{font:800 12px Manrope;color:#8d6417;margin:4px 0 0;padding-bottom:8px;border-bottom:1px solid #eee2ce;}
+#modalFields textarea{min-height:76px;resize:vertical;}
+.modal-actions{flex:0 0 auto;position:sticky;bottom:0;z-index:2;background:#fffaf1;}
+body.modal-open{overflow:hidden;}
+@media(max-width:760px){.modal-backdrop{padding:8px;align-items:center}.modal{max-height:calc(100dvh - 16px);width:100%;border-radius:12px}#modalFields{grid-template-columns:minmax(0,1fr);padding:14px;gap:12px}#modalFields .field.full{grid-column:auto}.modal-head{padding:14px}.modal-actions{padding:12px 14px}}
+/* Sales order register: clear spreadsheet-like grid and compact icon actions */
+.sales-orders-table{border-collapse:separate;border-spacing:0;min-width:1120px}
+.sales-orders-table th,.sales-orders-table td{border-right:1px solid #eee5d5;border-bottom:1px solid #eee5d5}
+.sales-orders-table th:first-child,.sales-orders-table td:first-child{border-left:1px solid #eee5d5}
+.sales-orders-table thead th{border-top:1px solid #eee5d5;background:#fbf6ea}
+.sales-orders-table tbody tr:nth-child(even){background:#fffdf8}
+.sales-orders-table tbody tr:hover{background:#f8f0df}
+.row-actions{display:flex;align-items:center;gap:5px}
+.action-icon{width:28px;height:28px;border:1px solid #e5d8bf;border-radius:7px;background:#fffaf0;color:#8d641c;display:inline-grid;place-items:center;font-size:16px;line-height:1;transition:background .15s,border-color .15s,transform .15s}
+.action-icon:hover{background:#f4e6c7;border-color:#cba65d;transform:translateY(-1px)}
+.action-icon.danger{color:#b24b3f;border-color:#efd7cf}
+.action-icon.danger:hover{background:#fff0ec;border-color:#d99a8b}
+.modal-backdrop{overscroll-behavior:contain}
+/* Sales order view/edit overlays and accessible action icons */
+.action-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.order-read-value{font-size:12px;line-height:1.5;color:#30271c;background:#fffdf8;border:1px solid #eee2ce;border-radius:8px;padding:10px;min-height:38px;overflow-wrap:anywhere;white-space:pre-wrap}
+.delete-confirm-message{font-size:13px;line-height:1.7;color:#65584a;margin:8px 0}.action-icon.danger{color:#b24b3f}
+
+/* Admin profile dropdown */
+.top-user-wrap{position:relative;display:flex;align-items:center}.top-user{display:flex;align-items:center;gap:9px;border:0;background:transparent;text-align:left;cursor:pointer;color:inherit;padding:4px 2px;border-radius:9px}.top-user:hover{background:#f7f8f5}.top-user>div:nth-child(2){display:flex;flex-direction:column}.top-user b{font-size:11px}.top-user small{font-size:9px;color:var(--muted);margin-top:3px}.admin-chevron{font-size:15px;transition:transform .18s}.top-user[aria-expanded="true"] .admin-chevron{transform:rotate(180deg)}.admin-dropdown{position:absolute;right:0;top:calc(100% + 10px);width:205px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 38px #17212e1f;padding:7px;z-index:90;animation:pop .15s ease}.admin-dropdown[hidden]{display:none}.admin-dropdown-head{display:flex;flex-direction:column;padding:10px;border-bottom:1px solid #eef0f2;margin-bottom:5px}.admin-dropdown-head b{font-size:12px;color:#27323d}.admin-dropdown-head small{font-size:10px;color:var(--muted);margin-top:4px}.admin-logout{width:100%;display:flex;align-items:center;gap:9px;padding:10px;border:0;border-radius:8px;background:#fff;text-align:left;color:#b54747;font-size:12px;font-weight:800;cursor:pointer}.admin-logout:hover{background:#fff1f0}.admin-logout span{font-size:17px}.purchase-delete-confirm{padding:24px 24px 28px;text-align:center;grid-column:1/-1}.purchase-delete-icon{width:44px;height:44px;border-radius:50%;background:#fff0ef;color:#c45252;display:grid;place-items:center;font-size:24px;font-weight:800;margin:0 auto 13px}.purchase-delete-confirm h3{font:800 16px Manrope;margin:0 0 8px;color:#27323d}.purchase-delete-confirm p{font-size:12px;line-height:1.7;color:#6d7782;margin:0 auto;max-width:410px;white-space:normal}.btn.danger-confirm{background:#c45252;border-color:#c45252;color:#fff}.btn.danger-confirm:hover{background:#a93e3e}
