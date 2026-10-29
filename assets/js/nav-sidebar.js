@@ -1,3 +1,13 @@
+(function () {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e3b04b"/><stop offset="1" stop-color="#a96b08"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><path d="M32 10 L37.5 26.5 L54 32 L37.5 37.5 L32 54 L26.5 37.5 L10 32 L26.5 26.5Z" fill="#fffaf1"/></svg>';
+  document.querySelectorAll('link[rel~="icon"]').forEach(l => l.remove());
+  const l = document.createElement('link');
+  l.rel = 'icon'; l.type = 'image/svg+xml'; l.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  document.head.appendChild(l);
+})();
+
+
+
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const money = n => '₹' + Number(n).toLocaleString('en-IN');
 const today = '22 Oct 2026';
@@ -167,11 +177,14 @@ function dbSnap() {
 }
 
 /* ---------- small SVG / HTML builders ---------- */
+let dbSid = 0;
+const dbCurve = p => p.map((q, i) => { if (!i) return `M${q[0].toFixed(1)},${q[1].toFixed(1)}`; const a = p[i - 1], m = (a[0] + q[0]) / 2; return `C${m.toFixed(1)},${a[1].toFixed(1)} ${m.toFixed(1)},${q[1].toFixed(1)} ${q[0].toFixed(1)},${q[1].toFixed(1)}` }).join(' ');
+const dbMix = (hex, t) => { const n = parseInt(hex.slice(1), 16), f = t >= 0 ? 255 : 0, a = Math.abs(t); return '#' + [n >> 16, n >> 8 & 255, n & 255].map(c => Math.round(c + (f - c) * a).toString(16).padStart(2, '0')).join('') };
 function dbSpark(vals, color) {
-  if (!vals.length) return ''; const W = 120, H = 34, mx = Math.max(...vals), mn = Math.min(...vals), rg = (mx - mn) || 1;
-  const xy = vals.map((v, i) => [vals.length > 1 ? i / (vals.length - 1) * W : W / 2, H - 3 - ((v - mn) / rg) * (H - 8)]);
-  const line = xy.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
-  return `<svg class="db-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polygon points="0,${H} ${line} ${W},${H}" fill="${color}" opacity=".12"/><polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+  if (!vals.length) return '';
+  const id = 'dbSp' + (++dbSid), W = 120, H = 36, mx = Math.max(...vals), mn = Math.min(...vals), rg = (mx - mn) || 1;
+  const xy = vals.map((v, i) => [vals.length > 1 ? i / (vals.length - 1) * W : W / 2, H - 4 - ((v - mn) / rg) * (H - 10)]), line = dbCurve(xy);
+  return `<svg class="db-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".4"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${line} L${W},${H} L0,${H}Z" fill="url(#${id})"/><path d="${line}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
 }
 function dbWalk(end, seed, n = 14, vol = .06) { const r = dbRand(seed), a = []; let v = end * (1 - vol * 2); for (let i = 0; i < n; i++) { v = v * (1 + (r() - .42) * vol); a.push(v) } const f = end / a[n - 1]; return a.map(x => x * f) }
 function dbKpi(label, value, icon, trendPct, foot, spark, color, opts = {}) {
@@ -181,18 +194,32 @@ function dbKpi(label, value, icon, trendPct, foot, spark, color, opts = {}) {
 function dbNice(max) { const e = Math.pow(10, Math.floor(Math.log10(max || 1))), f = max / e, m = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10; return m * e }
 
 function dbTrendChart(pts) {
-  dbChartPts = []; const W = 640, H = 250, L = 46, R = 14, T = 14, B = 30, iw = W - L - R, ih = H - T - B;
+  dbChartPts = []; const W = 640, H = 270, L = 46, R = 14, T = 16, B = 30, iw = W - L - R, ih = H - T - B, base = T + ih;
   const top = dbNice(Math.max(...pts.map(p => Math.max(p.s, p.p)), 1)), step = top / 4;
   const X = i => L + (pts.length > 1 ? i / (pts.length - 1) * iw : iw / 2), Y = v => T + ih - (v / top) * ih;
   let g = ''; for (let k = 0; k <= 4; k++) { const y = Y(step * k); g += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" class="db-grid"/><text x="${L - 8}" y="${y + 3}" text-anchor="end">${dbAxis(step * k)}</text>` }
   const every = Math.max(1, Math.ceil(pts.length / 7)); let xl = ''; pts.forEach((p, i) => { if ((i % every === 0 && (pts.length - 1 - i >= every / 2 || i === pts.length - 1)) || i === pts.length - 1) xl += `<text x="${X(i)}" y="${H - 9}" text-anchor="middle">${p.short}</text>`; dbChartPts.push({ x: X(i), ys: Y(p.s), yp: Y(p.p), p }) });
-  const sl = pts.map((p, i) => `${X(i).toFixed(1)},${Y(p.s).toFixed(1)}`).join(' '), pl = pts.map((p, i) => `${X(i).toFixed(1)},${Y(p.p).toFixed(1)}`).join(' ');
-  return `<div class="db-chart-wrap" id="dbTrend"><svg class="db-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sales versus purchases trend">${g}${xl}<polygon points="${L},${T + ih} ${sl} ${X(pts.length - 1)},${T + ih}" fill="#b77a12" opacity=".10"/><polyline points="${pl}" fill="none" stroke="#30271c" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${sl}" fill="none" stroke="#b77a12" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><line class="db-guide" x1="0" x2="0" y1="${T}" y2="${T + ih}"/><circle class="db-dot s" r="4.5" cx="0" cy="0"/><circle class="db-dot p" r="4" cx="0" cy="0"/></svg><div class="db-tip" id="dbTip"></div></div>`;
+  const sxy = pts.map((p, i) => [X(i), Y(p.s)]), pxy = pts.map((p, i) => [X(i), Y(p.p)]), sl = dbCurve(sxy), pl = dbCurve(pxy), lx = sxy[sxy.length - 1];
+  const dots = pts.length <= 14 ? sxy.map(q => `<circle class="db-pt" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="3.6"/>`).join('') : '';
+  return `<div class="db-chart-wrap" id="dbTrend"><svg class="db-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sales versus purchases trend"><defs>
+<linearGradient id="dbGs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a53a" stop-opacity=".55"/><stop offset=".6" stop-color="#d9a53a" stop-opacity=".14"/><stop offset="1" stop-color="#d9a53a" stop-opacity="0"/></linearGradient>
+<linearGradient id="dbGp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d4930" stop-opacity=".2"/><stop offset="1" stop-color="#5d4930" stop-opacity="0"/></linearGradient>
+<linearGradient id="dbLs" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e9c46a"/><stop offset=".55" stop-color="#c98a14"/><stop offset="1" stop-color="#8d5b08"/></linearGradient>
+<filter id="dbBlur" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="5"/></filter></defs>
+${g}${xl}
+<path d="${pl} L${X(pts.length - 1)},${base} L${L},${base}Z" fill="url(#dbGp)" class="db-area"/>
+<path d="${sl} L${X(pts.length - 1)},${base} L${L},${base}Z" fill="url(#dbGs)" class="db-area"/>
+<path d="${pl}" fill="none" stroke="#5d4930" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round" opacity=".8" class="db-line-p"/>
+<path d="${sl}" fill="none" stroke="#d9a53a" stroke-width="8" stroke-linecap="round" opacity=".4" filter="url(#dbBlur)" class="db-area"/>
+<path d="${sl}" fill="none" stroke="url(#dbLs)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" pathLength="1" class="db-line-s"/>
+${dots}<circle class="db-pulse" cx="${lx[0].toFixed(1)}" cy="${lx[1].toFixed(1)}" r="6"/><circle class="db-end" cx="${lx[0].toFixed(1)}" cy="${lx[1].toFixed(1)}" r="4.5"/>
+<line class="db-guide" x1="0" x2="0" y1="${T}" y2="${base}"/><circle class="db-dot s" r="5.5" cx="0" cy="0"/><circle class="db-dot p" r="4.5" cx="0" cy="0"/></svg><div class="db-tip" id="dbTip"></div></div>`;
 }
 function dbDonut(cats) {
-  const tot = dbSum(cats, 'v') || 1; let cum = 0;
-  const arcs = cats.map(c => { const p = c.v / tot * 100, a = `<circle cx="21" cy="21" r="15.9155" fill="none" stroke="${c.c}" stroke-width="6" stroke-dasharray="${Math.max(p - .6, 0).toFixed(2)} ${(100 - Math.max(p - .6, 0)).toFixed(2)}" stroke-dashoffset="${(25 - cum).toFixed(2)}"><title>${c.k}: ${dbMoney(c.v)} (${p.toFixed(1)}%)</title></circle>`; cum += p; return a }).join('');
-  return `<div class="db-donut-wrap"><div class="db-donut"><svg viewBox="0 0 42 42" role="img" aria-label="Sales by category"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f0e6d6" stroke-width="6"/>${arcs}</svg><div class="db-donut-c"><b>${dbMoney(tot)}</b><small>Total sales</small></div></div><ul class="db-legend">${cats.map(c => `<li><i style="background:${c.c}"></i><span>${c.k}</span><b>${(c.v / tot * 100).toFixed(1)}%</b><em>${dbMoney(c.v)}</em></li>`).join('')}</ul></div>`;
+  const tot = dbSum(cats, 'v') || 1, R = 15.9155, gap = .9; let cum = 0;
+  const defs = cats.map((c, i) => `<linearGradient id="dbDg${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${dbMix(c.c, .32)}"/><stop offset="1" stop-color="${dbMix(c.c, -.1)}"/></linearGradient>`).join('');
+  const arcs = cats.map((c, i) => { const p = c.v / tot * 100, len = Math.max(p - gap, .01); const a = `<circle class="db-slice" data-i="${i}" cx="21" cy="21" r="${R}" fill="none" stroke="url(#dbDg${i})" stroke-width="5.8" stroke-dasharray="${len.toFixed(2)} ${(100 - len).toFixed(2)}" stroke-dashoffset="${(25 - cum).toFixed(2)}" style="animation-delay:${i * 90}ms"><title>${c.k}: ${dbMoney(c.v)} (${p.toFixed(1)}%)</title></circle>`; cum += p; return a }).join('');
+  return `<div class="db-donut-wrap"><div class="db-donut"><svg viewBox="0 0 42 42" role="img" aria-label="Sales by category"><defs>${defs}</defs><circle cx="21" cy="21" r="19.4" fill="none" stroke="rgba(183,122,18,.28)" stroke-width=".25" stroke-dasharray=".6 .9"/><circle cx="21" cy="21" r="${R}" fill="none" stroke="rgba(255,255,255,.65)" stroke-width="5.8"/>${arcs}<circle cx="21" cy="21" r="11.6" fill="none" stroke="rgba(183,122,18,.25)" stroke-width=".25" stroke-dasharray=".6 .9"/></svg><div class="db-donut-c"><b>${dbMoney(tot)}</b><small>Total sales</small><em></em></div></div><ul class="db-legend">${cats.map((c, i) => `<li data-i="${i}" tabindex="0" data-name="${c.k}" data-val="${dbMoney(c.v)}" data-pct="${(c.v / tot * 100).toFixed(1)}"><i style="background:linear-gradient(135deg,${dbMix(c.c, .3)},${c.c})"></i><span>${c.k}</span><b>${(c.v / tot * 100).toFixed(1)}%</b><em>${dbMoney(c.v)}</em></li>`).join('')}</ul></div>`;
 }
 function dbBars(items, sel) {
   const mx = Math.max(...items.map(i => i.v), 1);
@@ -328,7 +355,15 @@ function dbNav(root = document) {
   root.querySelectorAll('[data-add]').forEach(b => b.onclick = () => openModal(b.dataset.add));
   root.querySelectorAll('tr[data-toast]').forEach(r => r.onclick = () => toast(r.dataset.toast));
 }
+function dbDonutHover() {
+  const w = $('.db-donut-wrap'); if (!w) return;
+  const c = w.querySelector('.db-donut-c'), b = c.querySelector('b'), s = c.querySelector('small'), e = c.querySelector('em'), b0 = b.textContent, s0 = s.textContent;
+  const on = i => { w.classList.add('has-hl'); w.querySelectorAll('[data-i]').forEach(x => x.classList.toggle('hl', x.dataset.i === String(i))); const li = w.querySelector(`li[data-i="${i}"]`); b.textContent = li.dataset.pct + '%'; s.textContent = li.dataset.name; e.textContent = li.dataset.val };
+  const off = () => { w.classList.remove('has-hl'); w.querySelectorAll('.hl').forEach(x => x.classList.remove('hl')); b.textContent = b0; s.textContent = s0; e.textContent = '' };
+  w.querySelectorAll('[data-i]').forEach(x => { x.onmouseenter = x.onfocus = () => on(x.dataset.i); x.onmouseleave = x.onblur = off });
+}
 function dbHover() {
+  dbDonutHover();
   const w = $('#dbTrend'); if (!w || !dbChartPts.length) return;
   const svg = w.querySelector('svg'), tip = $('#dbTip'), gd = w.querySelector('.db-guide'), ds = w.querySelector('.db-dot.s'), dp = w.querySelector('.db-dot.p');
   const move = e => {
