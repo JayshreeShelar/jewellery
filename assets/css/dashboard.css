@@ -4242,18 +4242,61 @@ body[data-page="dashboard"] .status {
   box-shadow: 0 6px 12px -4px rgba(95, 68, 25, .4), inset 0 1px 0 rgba(255, 255, 255, .7)
 }
 
-/* pie + legend side by side on wide screens (keeps both panels the same height) */
-@media(min-width:1350px) {
+/* Sales vs Purchases + pie: same height, no blank space (pie and legend side by side) */
+.db-row-main>.panel>.panel-body {
+  justify-content: center
+}
+
+.db-chart-wrap {
+  margin-top: auto;
+  margin-bottom: auto
+}
+
+@media(min-width:1101px) {
   .db-row-main .db-donut-wrap {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 22px
+    gap: 18px
+  }
+
+  .db-row-main .db-donut {
+    width: 176px;
+    height: 176px
   }
 
   .db-row-main .db-donut-wrap .db-legend {
     flex: 1;
     min-width: 0
+  }
+
+  .db-row-main .db-legend li {
+    padding: 6px 9px;
+    gap: 6px
+  }
+}
+
+@media(min-width:1101px) and (max-width:1349px) {
+  .db-row-main .db-legend li em {
+    display: none
+  }
+
+  .db-row-main .db-legend li {
+    grid-template-columns: 10px minmax(0, 1fr) auto
+  }
+}
+
+@media(min-width:1350px) {
+  .db-row-main .db-donut {
+    width: 200px;
+    height: 200px
+  }
+}
+
+@media(min-width:1700px) {
+  .db-row-main .db-donut {
+    width: 250px;
+    height: 250px
   }
 }
 
