@@ -47,4 +47,309 @@
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal"><div class="modal-head"><div><h3 id="modalTitle">Add record</h3><p>Demo mode · changes stay in this browser session</p></div><button id="modalClose">×</button></div><form id="recordForm"><div id="modalFields" class="form-grid"></div><div class="modal-actions"><button type="button" class="btn secondary" id="cancelModal">Cancel</button><button class="btn primary" type="submit">Save demo record</button></div></form></div>
 </div>
+<script>
+window.addEventListener("DOMContentLoaded", function () {
+  /* =====================================================================
+     AURUM ERP — DASHBOARD CODE (inline). Runs after nav-sidebar.js has loaded,
+     keeps everything in its own scope (no name clashes) and replaces dashboard().
+     ===================================================================== */
+  const dbMoney = n => { n = Number(n) || 0; const a = Math.abs(n); return a >= 1e7 ? '₹' + (n / 1e7).toFixed(2) + ' Cr' : a >= 1e5 ? '₹' + (n / 1e5).toFixed(2) + ' L' : money(Math.round(n)) };
+  const dbAxis = n => n >= 1e7 ? +(n / 1e7).toFixed(1) + 'Cr' : n >= 1e5 ? +(n / 1e5).toFixed(1) + 'L' : n >= 1e3 ? +(n / 1e3).toFixed(0) + 'K' : String(n);
+  const dbPct = (a, b) => b ? ((a - b) / b * 100) : 0;
+  const dbRand = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 };
+  const DB_END = new Date(2026, 9, 22), DB_DAYS = 420, DB_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const DB_BRANCHES = ['Main Showroom', 'Chinchwad Branch', 'Wholesale Counter'];
+  const DB_CATS = [
+    { k: 'Gold Rings', m: 'Gold', c: '#b77a12', sh: .17, mg: .16 },
+    { k: 'Necklaces', m: 'Gold', c: '#30271c', sh: .21, mg: .12 },
+    { k: 'Bangles', m: 'Gold', c: '#d3a44b', sh: .18, mg: .11 },
+    { k: 'Chains & Others', m: 'Gold', c: '#c77a65', sh: .10, mg: .14 },
+    { k: 'Silver Articles', m: 'Silver', c: '#5d7790', sh: .14, mg: .22 },
+    { k: 'Diamond Jewellery', m: 'Diamond', c: '#6f8f7a', sh: .20, mg: .24 }];
+  const DB_PERIODS = { today: { l: 'Today', n: 1, p: 'yesterday' }, '7d': { l: '7 Days', n: 7, p: 'previous 7 days' }, '30d': { l: '30 Days', n: 30, p: 'previous 30 days' }, month: { l: 'This Month', n: 22, p: 'previous 22 days' }, fy: { l: 'FY 2026-27', n: 205, p: 'previous period' } };
+  const dbState = { period: 'month', branch: 'All', metal: 'All', oStatus: 'All', oQuery: '', iStatus: 'All' };
+  let dbLedger = null, dbChartPts = [];
+
+  /* ---------- demo ledger: day × branch × category ---------- */
+  function dbBuild() {
+    if (dbLedger) return dbLedger;
+    const r = dbRand(2026), rows = [], brSh = [.5, .3, .2], brPu = [.7, .15, .15];
+    for (let i = 0; i < DB_DAYS; i++) {
+      const dt = new Date(DB_END); dt.setDate(DB_END.getDate() - (DB_DAYS - 1 - i));
+      const dow = dt.getDay(), wk = (dow === 0 || dow === 6) ? 1.22 : 1, gr = 1 + i / DB_DAYS * .35;
+      const sBase = 470000 * wk * gr * (.82 + r() * .36), pBase = 300000 * gr * (i % 5 === 0 ? 2.1 : .55) * (.8 + r() * .4);
+      DB_BRANCHES.forEach((br, b) => DB_CATS.forEach(c => {
+        const s = sBase * c.sh * brSh[b] * (.85 + r() * .3), p = pBase * (c.m === 'Gold' ? c.sh * 1.25 : c.sh * .55) * brPu[b] * (.85 + r() * .3);
+        rows.push({ i, d: dt, br, cat: c.k, m: c.m, s, p, pr: s * c.mg, c: s * (.78 + r() * .14) });
+      }));
+    }
+    // anchor today's total to the headline demo figure (₹6,84,500) and yesterday to +12.8%
+    [[DB_DAYS - 1, 684500], [DB_DAYS - 2, 684500 / 1.128]].forEach(([i, target]) => {
+      const day = rows.filter(x => x.i === i), tot = day.reduce((t, x) => t + x.s, 0), f = target / tot;
+      day.forEach(x => { x.s *= f; x.pr *= f; x.c *= f });
+    });
+    return dbLedger = rows;
+  }
+  const dbMatch = (r, st) => (st.branch === 'All' || r.br === st.branch) && (st.metal === 'All' || r.m === st.metal);
+  const dbSum = (a, k) => a.reduce((t, r) => t + r[k], 0);
+  const dbLabel = d => `${String(d.getDate()).padStart(2, '0')} ${DB_MONTHS[d.getMonth()]}`;
+
+  function dbCompute(st) {
+    const L = dbBuild(), n = DB_PERIODS[st.period].n;
+    const cur = L.filter(r => r.i >= DB_DAYS - n && dbMatch(r, st)), prev = L.filter(r => r.i >= DB_DAYS - 2 * n && r.i < DB_DAYS - n && dbMatch(r, st));
+    // trend series (min 7 days so “Today” still shows a chart); bucket long ranges
+    const w = Math.max(n, 7), days = [];
+    for (let i = DB_DAYS - w; i < DB_DAYS; i++)days.push({ i, s: 0, p: 0, pr: 0, c: 0, d: null });
+    L.forEach(r => { if (r.i >= DB_DAYS - w && dbMatch(r, st)) { const x = days[r.i - (DB_DAYS - w)]; x.s += r.s; x.p += r.p; x.pr += r.pr; x.c += r.c; x.d = r.d } });
+    const size = w > 31 ? Math.ceil(w / 30) : 1, pts = [];
+    for (let k = 0; k < days.length; k += size) { const g = days.slice(k, k + size); pts.push({ label: dbLabel(g[0].d) + (size > 1 ? ' – ' + dbLabel(g[g.length - 1].d) : ''), short: dbLabel(g[0].d), s: dbSum(g, 's'), p: dbSum(g, 'p'), pr: dbSum(g, 'pr'), c: dbSum(g, 'c') }) }
+    const byCat = DB_CATS.map(c => ({ ...c, v: dbSum(cur.filter(r => r.cat === c.k), 's') })).filter(c => st.metal === 'All' || c.m === st.metal);
+    const byBr = DB_BRANCHES.map(b => ({ k: b, v: dbSum(L.filter(r => r.i >= DB_DAYS - n && r.br === b && (st.metal === 'All' || r.m === st.metal)), 's') }));
+    return {
+      n, cur, prev, pts, byCat, byBr,
+      s: dbSum(cur, 's'), ps: dbSum(prev, 's'), p: dbSum(cur, 'p'), pp: dbSum(prev, 'p'),
+      pr: dbSum(cur, 'pr'), ppr: dbSum(prev, 'pr'), c: dbSum(cur, 'c'), pc: dbSum(prev, 'c')
+    };
+  }
+
+  /* ---------- snapshot figures derived from saved records ---------- */
+  function dbSnap() {
+    const sum = (a, f = x => x.amount) => (a || []).reduce((t, x) => t + (Number(f(x)) || 0), 0), st = (a, s) => (a || []).filter(x => x.status === s);
+    const goldG = 2480, silverG = 18600, stones = 420000, rG = 12082, rS = 155.85;
+    return {
+      dues: sum(data.customers), duesOverdue: sum(st(data.customers, 'Overdue')),
+      payables: sum(data.suppliers),
+      jobs: (data.karigar || []).filter(j => j.status !== 'Completed'), overdue: st(data.karigar, 'Overdue'),
+      low: (data.inventory || []).filter(x => x.status === 'Low Stock'),
+      pendSales: st(data.sales, 'Pending'), pendPay: st(data.payments, 'Pending'), pendExp: st(data.expenses, 'Pending'), pendPur: st(data.purchase, 'Pending'),
+      goldG, silverG, stones, goldV: goldG * rG, silverV: silverG * rS, stockV: goldG * rG + silverG * rS + stones
+    };
+  }
+
+  /* ---------- small SVG / HTML builders ---------- */
+  let dbSid = 0;
+  const dbCurve = p => p.map((q, i) => { if (!i) return `M${q[0].toFixed(1)},${q[1].toFixed(1)}`; const a = p[i - 1], m = (a[0] + q[0]) / 2; return `C${m.toFixed(1)},${a[1].toFixed(1)} ${m.toFixed(1)},${q[1].toFixed(1)} ${q[0].toFixed(1)},${q[1].toFixed(1)}` }).join(' ');
+  const dbMix = (hex, t) => { const n = parseInt(hex.slice(1), 16), f = t >= 0 ? 255 : 0, a = Math.abs(t); return '#' + [n >> 16, n >> 8 & 255, n & 255].map(c => Math.round(c + (f - c) * a).toString(16).padStart(2, '0')).join('') };
+  function dbSpark(vals, color) {
+    if (!vals.length) return '';
+    const id = 'dbSp' + (++dbSid), W = 120, H = 36, mx = Math.max(...vals), mn = Math.min(...vals), rg = (mx - mn) || 1;
+    const xy = vals.map((v, i) => [vals.length > 1 ? i / (vals.length - 1) * W : W / 2, H - 4 - ((v - mn) / rg) * (H - 10)]), line = dbCurve(xy);
+    return `<svg class="db-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".4"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${line} L${W},${H} L0,${H}Z" fill="url(#${id})"/><path d="${line}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+  function dbWalk(end, seed, n = 14, vol = .06) { const r = dbRand(seed), a = []; let v = end * (1 - vol * 2); for (let i = 0; i < n; i++) { v = v * (1 + (r() - .42) * vol); a.push(v) } const f = end / a[n - 1]; return a.map(x => x * f) }
+  function dbKpi(label, value, icon, trendPct, foot, spark, color, opts = {}) {
+    const up = trendPct >= 0, t = trendPct === null ? `<span class="trend flat">${opts.chip || ''}</span>` : `<span class="trend ${(opts.invert ? !up : up) ? '' : 'down'}">${up ? '↑' : '↓'} ${Math.abs(trendPct).toFixed(1)}%</span>`;
+    return `<div class="stat-card db-kpi"${opts.goto ? ` data-goto="${opts.goto}" role="button" tabindex="0"` : ''}><div class="stat-top"><span class="stat-label">${label}</span><span class="stat-icon"${opts.bg ? ` style="background:${opts.bg};color:${opts.fg}"` : ''}>${icon}</span></div><div class="stat-value">${value}</div><div class="db-kpi-foot"><div class="stat-bottom">${t}<span>${foot}</span></div>${dbSpark(spark, color)}</div></div>`;
+  }
+  function dbNice(max) { const e = Math.pow(10, Math.floor(Math.log10(max || 1))), f = max / e, m = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10; return m * e }
+
+  function dbTrendChart(pts) {
+    dbChartPts = []; const W = 640, H = 270, L = 46, R = 14, T = 16, B = 30, iw = W - L - R, ih = H - T - B, base = T + ih;
+    const top = dbNice(Math.max(...pts.map(p => Math.max(p.s, p.p)), 1)), step = top / 4;
+    const X = i => L + (pts.length > 1 ? i / (pts.length - 1) * iw : iw / 2), Y = v => T + ih - (v / top) * ih;
+    let g = ''; for (let k = 0; k <= 4; k++) { const y = Y(step * k); g += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" class="db-grid"/><text x="${L - 8}" y="${y + 3}" text-anchor="end">${dbAxis(step * k)}</text>` }
+    const every = Math.max(1, Math.ceil(pts.length / 7)); let xl = ''; pts.forEach((p, i) => { if ((i % every === 0 && (pts.length - 1 - i >= every / 2 || i === pts.length - 1)) || i === pts.length - 1) xl += `<text x="${X(i)}" y="${H - 9}" text-anchor="middle">${p.short}</text>`; dbChartPts.push({ x: X(i), ys: Y(p.s), yp: Y(p.p), p }) });
+    const sxy = pts.map((p, i) => [X(i), Y(p.s)]), pxy = pts.map((p, i) => [X(i), Y(p.p)]), sl = dbCurve(sxy), pl = dbCurve(pxy), lx = sxy[sxy.length - 1];
+    const dots = pts.length <= 14 ? sxy.map(q => `<circle class="db-pt" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="3.6"/>`).join('') : '';
+    return `<div class="db-chart-wrap" id="dbTrend"><svg class="db-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sales versus purchases trend"><defs>
+  <linearGradient id="dbGs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a53a" stop-opacity=".55"/><stop offset=".6" stop-color="#d9a53a" stop-opacity=".14"/><stop offset="1" stop-color="#d9a53a" stop-opacity="0"/></linearGradient>
+  <linearGradient id="dbGp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5d4930" stop-opacity=".2"/><stop offset="1" stop-color="#5d4930" stop-opacity="0"/></linearGradient>
+  <linearGradient id="dbLs" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e9c46a"/><stop offset=".55" stop-color="#c98a14"/><stop offset="1" stop-color="#8d5b08"/></linearGradient>
+  <filter id="dbBlur" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="5"/></filter></defs>
+  ${g}${xl}
+  <path d="${pl} L${X(pts.length - 1)},${base} L${L},${base}Z" fill="url(#dbGp)" class="db-area"/>
+  <path d="${sl} L${X(pts.length - 1)},${base} L${L},${base}Z" fill="url(#dbGs)" class="db-area"/>
+  <path d="${pl}" fill="none" stroke="#5d4930" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round" opacity=".8" class="db-line-p"/>
+  <path d="${sl}" fill="none" stroke="#d9a53a" stroke-width="8" stroke-linecap="round" opacity=".4" filter="url(#dbBlur)" class="db-area"/>
+  <path d="${sl}" fill="none" stroke="url(#dbLs)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" pathLength="1" class="db-line-s"/>
+  ${dots}<circle class="db-pulse" cx="${lx[0].toFixed(1)}" cy="${lx[1].toFixed(1)}" r="6"/><circle class="db-end" cx="${lx[0].toFixed(1)}" cy="${lx[1].toFixed(1)}" r="4.5"/>
+  <line class="db-guide" x1="0" x2="0" y1="${T}" y2="${base}"/><circle class="db-dot s" r="5.5" cx="0" cy="0"/><circle class="db-dot p" r="4.5" cx="0" cy="0"/></svg><div class="db-tip" id="dbTip"></div></div>`;
+  }
+  function dbDonut(cats) {
+    const tot = dbSum(cats, 'v') || 1, R = 15.9155, gap = .9; let cum = 0;
+    const defs = cats.map((c, i) => `<linearGradient id="dbDg${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${dbMix(c.c, .32)}"/><stop offset="1" stop-color="${dbMix(c.c, -.1)}"/></linearGradient>`).join('');
+    const arcs = cats.map((c, i) => { const p = c.v / tot * 100, len = Math.max(p - gap, .01); const a = `<circle class="db-slice" data-i="${i}" cx="21" cy="21" r="${R}" fill="none" stroke="url(#dbDg${i})" stroke-width="5.8" stroke-dasharray="${len.toFixed(2)} ${(100 - len).toFixed(2)}" stroke-dashoffset="${(25 - cum).toFixed(2)}" style="animation-delay:${i * 90}ms"><title>${c.k}: ${dbMoney(c.v)} (${p.toFixed(1)}%)</title></circle>`; cum += p; return a }).join('');
+    return `<div class="db-donut-wrap"><div class="db-donut"><svg viewBox="0 0 42 42" role="img" aria-label="Sales by category"><defs>${defs}</defs><circle cx="21" cy="21" r="19.4" fill="none" stroke="rgba(183,122,18,.28)" stroke-width=".25" stroke-dasharray=".6 .9"/><circle cx="21" cy="21" r="${R}" fill="none" stroke="rgba(255,255,255,.65)" stroke-width="5.8"/>${arcs}<circle cx="21" cy="21" r="11.6" fill="none" stroke="rgba(183,122,18,.25)" stroke-width=".25" stroke-dasharray=".6 .9"/></svg><div class="db-donut-c"><b>${dbMoney(tot)}</b><small>Total sales</small><em></em></div></div><ul class="db-legend">${cats.map((c, i) => `<li data-i="${i}" tabindex="0" data-name="${c.k}" data-val="${dbMoney(c.v)}" data-pct="${(c.v / tot * 100).toFixed(1)}"><i style="background:linear-gradient(135deg,${dbMix(c.c, .3)},${c.c})"></i><span>${c.k}</span><b>${(c.v / tot * 100).toFixed(1)}%</b><em>${dbMoney(c.v)}</em></li>`).join('')}</ul></div>`;
+  }
+  function dbBars(items, sel) {
+    const mx = Math.max(...items.map(i => i.v), 1);
+    return `<div class="db-hbars">${items.map(i => `<div class="db-hbar ${sel === i.k ? 'sel' : ''}"><div class="db-hbar-top"><span>${i.k}</span><b>${dbMoney(i.v)}</b></div><div class="db-track"><i style="width:${(i.v / mx * 100).toFixed(1)}%;background:${i.c || '#b77a12'}"></i></div></div>`).join('')}</div>`;
+  }
+  function dbStack(items) {
+    const tot = dbSum(items, 'v') || 1;
+    return `<div class="db-stack">${items.map(i => `<i style="width:${i.v / tot * 100}%;background:${i.c}" title="${i.k}: ${dbMoney(i.v)}"></i>`).join('')}</div><ul class="db-legend slim">${items.map(i => `<li><i style="background:${i.c}"></i><span>${i.k}</span><b>${(i.v / tot * 100).toFixed(0)}%</b><em>${dbMoney(i.v)}</em></li>`).join('')}</ul>`;
+  }
+  function dbCols(items) {
+    const mx = Math.max(...items.map(i => i.v), 1);
+    return `<div class="db-cols">${items.map(i => `<div class="db-col"><b>${dbMoney(i.v)}</b><div class="db-col-bar"><i style="height:${Math.max(i.v / mx * 100, 4).toFixed(1)}%;background:${i.c}"></i></div><span>${i.k}</span></div>`).join('')}</div>`;
+  }
+  const dbParse = s => { const m = String(s || '').match(/(\d{1,2})\s+([A-Za-z]{3})\w*\s+(\d{4})/); if (m) return new Date(+m[3], DB_MONTHS.indexOf(m[2]), +m[1]); const iso = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return iso ? new Date(+iso[1], +iso[2] - 1, +iso[3]) : new Date(DB_END) };
+  const dbDayIdx = d => DB_DAYS - 1 - Math.round((DB_END - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+
+  /* ---------- KPI cards (always "This Month") ---------- */
+  const dbKpiState = { period: 'month', branch: 'All', metal: 'All' };
+  function dbKpis() {
+    const c = dbCompute(dbKpiState), sn = dbSnap(), sp = k => c.pts.map(p => p[k]), pv = 'vs previous 22 days';
+    const cards = [
+      ['Total Sales', dbMoney(c.s), '↗', dbPct(c.s, c.ps), pv, sp('s'), '#b77a12', 'sales', '#f5e7c5', '#8d5b08'],
+      ['Purchases', dbMoney(c.p), '↙', dbPct(c.p, c.pp), pv, sp('p'), '#30271c', 'purchase', '#e9e4dc', '#30271c'],
+      ['Gross Profit', dbMoney(c.pr), '◈', dbPct(c.pr, c.ppr), (c.s ? (c.pr / c.s * 100).toFixed(1) : 0) + '% margin', sp('pr'), '#4f8a68', 'reports', '#e1f0e6', '#3d7650'],
+      ['Collections', dbMoney(c.c), '▤', dbPct(c.c, c.pc), (c.s ? (c.c / c.s * 100).toFixed(0) : 0) + '% of sales', sp('c'), '#5d7790', 'payments', '#e4ecf3', '#455f77']
+    ].map(([l, v, ic, t, f, spk, col, g, bg, fg]) => dbKpi(l, v, ic, t, f, spk, col, { goto: g, bg, fg }));
+    const snaps = [
+      ['Customer Dues', dbMoney(sn.dues), '♙', dbMoney(sn.duesOverdue) + ' overdue', `${(data.customers || []).filter(x => x.amount > 0).length} customers owe`, dbWalk(sn.dues, 11), '#c77a65', 'customers', '#f7e4de', '#a4553f'],
+      ['Supplier Payables', dbMoney(sn.payables), '♧', 'Due soon', `${(data.suppliers || []).filter(x => x.amount > 0).length} suppliers to pay`, dbWalk(sn.payables, 12), '#8d5b08', 'suppliers', '#f5e7c5', '#8d5b08'],
+      ['Stock Valuation', dbMoney(sn.stockV), '◇', 'Live rates', `Gold ${(sn.goldG / 1000).toFixed(2)} kg · Silver ${(sn.silverG / 1000).toFixed(1)} kg`, dbWalk(sn.stockV, 13, 14, .03), '#d3a44b', 'inventory', '#faf0d3', '#9b6a17'],
+      ['Active Job Work', sn.jobs.length + ' jobs', '⚒', sn.overdue.length ? sn.overdue.length + ' overdue' : 'On track', `${sn.jobs.reduce((t, j) => t + Number(j.amount || 0), 0).toFixed(1)} g issued`, dbWalk(Math.max(sn.jobs.length, 1), 14, 14, .12), '#565a80', 'karigar', '#e7e6f0', '#454a73']
+    ].map(([l, v, ic, chip, f, spk, col, g, bg, fg]) => dbKpi(l, v, ic, null, f, spk, col, { goto: g, chip, bg, fg }));
+    return cards.concat(snaps).join('');
+  }
+
+  /* ---------- analytics charts (re-render with the filters) ---------- */
+  function dbLive() {
+    const st = dbState, c = dbCompute(st), sn = dbSnap(), P = DB_PERIODS[st.period];
+    const modes = [['Cash', '#b77a12', .22], ['UPI', '#30271c', .39], ['Card', '#6f8f7a', .15], ['Bank / NEFT', '#5d7790', .24]].map(([k, col, s]) => ({ k, c: col, v: c.c * s }));
+    const ageing = [['0–30 d', '#6f8f7a', .46], ['31–60 d', '#d3a44b', .28], ['61–90 d', '#c77a65', .16], ['90+ d', '#a44848', .10]].map(([k, col, s]) => ({ k, c: col, v: sn.dues * s }));
+    const best = [...c.pts].sort((a, b) => b.s - a.s)[0] || { short: '—', s: 0 };
+    return `<div class="db-row db-row-main">
+   <section class="panel db-glow"><div class="panel-head"><div><h2>Sales vs Purchases</h2><p>${P.l} · ${st.branch === 'All' ? 'All branches' : st.branch} · ${st.metal === 'All' ? 'All metals' : st.metal}</p></div><div class="db-keys"><span><i style="background:#b77a12"></i>Sales</span><span><i class="dash"></i>Purchases</span></div></div><div class="panel-body">${dbTrendChart(c.pts)}<div class="db-insights"><div><small>Total sales</small><b>${dbMoney(c.s)}</b></div><div><small>Peak ${c.n > 31 ? 'period' : 'day'}</small><b>${best.short} · ${dbMoney(best.s)}</b></div><div><small>Avg. per day</small><b>${dbMoney(c.s / c.n)}</b></div></div></div></section>
+   <section class="panel"><div class="panel-head"><div><h2>Sales by Category</h2><p>Share of revenue · ${P.l}</p></div></div><div class="panel-body">${dbDonut(c.byCat)}</div></section>
+  </div>
+  <div class="db-row db-row-3">
+   <section class="panel"><div class="panel-head"><div><h2>Branch Performance</h2><p>Sales by showroom</p></div></div><div class="panel-body">${dbBars(c.byBr, st.branch)}</div></section>
+   <section class="panel"><div class="panel-head"><div><h2>Payment Modes</h2><p>${dbMoney(c.c)} collected</p></div></div><div class="panel-body">${dbStack(modes)}</div></section>
+   <section class="panel"><div class="panel-head"><div><h2>Receivables Ageing</h2><p>Outstanding ${dbMoney(sn.dues)} · demo split</p></div><button class="text-link" data-goto="customers">Customers ↗</button></div><div class="panel-body">${dbCols(ageing)}</div></section>
+  </div>`;
+  }
+
+  /* ---------- compact tables ---------- */
+  const dbPill = s => `<span class="status ${statusClass(s)}">${s}</span>`;
+  function dbTable(heads, rows, empty) {
+    if (!rows.length) return `<div class="empty-note">${empty}</div>`;
+    return `<div class="table-wrap"><table class="db-table"><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+  }
+  function dbOrdersHTML() {
+    const st = dbState, q = st.oQuery.toLowerCase();
+    const rows = (data.sales || []).filter(r => (st.oStatus === 'All' || r.status === st.oStatus) && (!q || Object.values(r).some(v => String(v).toLowerCase().includes(q)))).slice(0, 6)
+      .map((r, i) => `<tr data-toast="${r.ref} · ${r.name} · ${money(r.amount)}"><td><div class="db-avatar">${r.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</div></td><td><div class="main-cell">${r.name}</div><div class="sub-cell">${r.ref} · ${r.detail}</div></td><td>${r.date.replace(' 2026', '')}</td><td class="amt">${money(r.amount)}</td><td>${dbPill(r.status)}</td></tr>`);
+    return dbTable(['', 'Customer / Order', 'Date', 'Amount', 'Status'], rows, 'No orders match the search or status.');
+  }
+  function dbInvHTML() {
+    const f = dbState.iStatus, mx = Math.max(...(data.inventory || []).map(x => x.amount), 1);
+    const rows = [...(data.inventory || [])].filter(r => f === 'All' || r.status === f).sort((a, b) => (a.status === 'Low Stock' ? 0 : 1) - (b.status === 'Low Stock' ? 0 : 1)).slice(0, 6)
+      .map(r => `<tr data-toast="${r.ref} · ${r.name} · ${r.amount} pcs"><td><div class="main-cell">${r.name}</div><div class="sub-cell">${r.ref} · ${r.date}</div></td><td><div class="db-qty"><span>${r.amount} pcs</span><i><b class="${r.status === 'Low Stock' ? 'low' : ''}" style="width:${Math.max(r.amount / mx * 100, 4)}%"></b></i></div></td><td>${dbPill(r.status)}</td></tr>`);
+    return dbTable(['Product', 'Stock', 'Status'], rows, 'No products in this stock status.');
+  }
+  function dbJobsHTML() {
+    const rows = (data.karigar || []).slice(0, 5).map(r => `<tr data-toast="${r.ref} · ${r.name} · ${r.status}"><td><div class="main-cell">${r.name}</div><div class="sub-cell">${r.ref} · ${r.detail}</div></td><td>${r.date.replace('Due ', '')}</td><td class="amt">${r.amount} g</td><td>${dbPill(r.status)}</td></tr>`);
+    return dbTable(['Karigar / Job', 'Due', 'Weight', 'Status'], rows, 'No active jobs.');
+  }
+  function dbCustomers() {
+    const m = {}; (data.sales || []).forEach(r => { m[r.name] = (m[r.name] || 0) + Number(r.amount || 0) });
+    const list = Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 5), mx = list[0] ? list[0][1] : 1;
+    return list.map(([n, v], i) => `<div class="db-cust"><span class="db-rank r${i + 1}">${i + 1}</span><div class="db-cust-main"><div class="db-hbar-top"><b>${n}</b><span>${dbMoney(v)}</span></div><div class="db-track"><i style="width:${(v / mx * 100).toFixed(1)}%"></i></div></div></div>`).join('') || '<div class="empty-note">No sales yet.</div>';
+  }
+  function dbAttention() {
+    const sn = dbSnap(), items = [
+      [sn.overdue.length, '!', 'overdue karigar job' + (sn.overdue.length === 1 ? '' : 's'), 'karigar', '#f5e2dd', '#a44848'],
+      [sn.pendSales.length + sn.pendPay.length, '₹', 'pending customer payment' + (sn.pendSales.length + sn.pendPay.length === 1 ? '' : 's'), 'payments', '#faead0', '#a35e0a'],
+      [sn.low.length, '◇', 'product' + (sn.low.length === 1 ? '' : 's') + ' low on stock', 'inventory', '#f5e7c5', '#8d5b08'],
+      [sn.pendPur.length + sn.pendExp.length, '✓', 'approval' + (sn.pendPur.length + sn.pendExp.length === 1 ? '' : 's') + ' pending', 'purchase', '#e4ecf3', '#455f77']
+    ].filter(x => x[0] > 0);
+    return items.length ? items.map(([n, i, t, g, bg, fg]) => `<button class="db-alert" data-goto="${g}"><span class="db-alert-i" style="background:${bg};color:${fg}">${i}</span><b>${n} ${t}</b><em>→</em></button>`).join('') : '<div class="empty-note">Nothing needs attention.</div>';
+  }
+
+  /* ---------- hero banner ---------- */
+  function dbHero() {
+    const c = dbCompute({ period: 'today', branch: 'All', metal: 'All' }), m = dbCompute(dbKpiState), h = new Date().getHours();
+    const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening', target = 18000000, pc = Math.min(m.s / target * 100, 100);
+    const R = 44, C = 2 * Math.PI * R, rates = [['Gold 24K', '₹13,180', '0.42', 'Au'], ['Gold 22K', '₹12,082', '0.38', 'Au'], ['Silver 999', '₹168.50', '0.21', 'Ag'], ['Silver 925', '₹155.85', '0.18', 'Ag']];
+    const orders = (data.sales || []).filter(r => r.date === today).length;
+    return `<section class="db-hero">
+   <div class="db-hero-l"><div class="db-hello">${greet}, Admin 👋</div><div class="db-hero-label">Today's sales · ${today}</div><div class="db-hero-val">${dbMoney(c.s)}</div><div class="db-hero-sub"><span class="db-up">↑ 12.8%</span> vs yesterday · ${orders || 14} orders · ${(data.customers || []).length} active customers</div>
+    <div class="db-hero-actions"><button data-add="sales">＋ New Sales Order</button><button data-add="purchase">↙ Record Purchase</button><button data-add="payments">▤ Record Payment</button><button data-add="inventory">◇ Add Product</button><button data-add="karigar">⚒ Job Work</button><button data-add="expenses">₹ Expense</button></div></div>
+   <div class="db-hero-r">
+    <div class="db-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${R}" fill="none" stroke="#ffffff22" stroke-width="9"/><circle cx="50" cy="50" r="${R}" fill="none" stroke="#f0c869" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(C * pc / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 50 50)"/></svg><div><b>${pc.toFixed(0)}%</b><small>Monthly target</small></div></div>
+    <div class="db-rates"><div class="db-rates-h">Today's rates / g <button data-goto="rates">Manage ↗</button></div>${rates.map(([n, p, ch, b]) => `<div class="db-rate"><span class="db-rate-b ${b === 'Ag' ? 'ag' : ''}">${b}</span><div><small>${n}</small><b>${p}</b></div><em>↑ ${ch}%</em></div>`).join('')}</div>
+   </div></section>`;
+  }
+
+  /* ---------- page ---------- */
+  function dbDashboard() {
+    setTimeout(dbInit, 0);
+    const st = dbState, opt = (a, v) => a.map(x => `<option${x === v ? ' selected' : ''}>${x}</option>`).join('');
+    return `${pageHead('dashboard')}
+  ${dbHero()}
+  <div class="stats db-kpis" id="dbKpis">${dbKpis()}</div>
+  <div class="db-sec-head"><div><h2>Business Analytics</h2><p>Use the filters to slice trends by period, branch and metal</p></div>
+   <div class="db-filters">
+    <div class="db-chips" id="dbPeriod" role="group" aria-label="Period">${Object.entries(DB_PERIODS).map(([k, p]) => `<button type="button" class="db-chip${k === st.period ? ' on' : ''}" data-p="${k}">${p.l}</button>`).join('')}</div>
+    <div class="db-selects"><select id="dbBranch" class="filter-select" aria-label="Branch">${opt(['All', ...DB_BRANCHES], st.branch)}</select><select id="dbMetal" class="filter-select" aria-label="Metal">${opt(['All', 'Gold', 'Silver', 'Diamond'], st.metal)}</select><button type="button" class="btn secondary" id="dbReset" title="Reset filters">↺</button><button type="button" class="btn secondary" id="dbExport" title="Export CSV">⇩ CSV</button></div>
+   </div></div>
+  <div id="dbLive">${dbLive()}</div>
+  <div class="db-sec-head"><div><h2>Operations</h2><p>Orders, stock and job work at a glance</p></div></div>
+  <div class="db-row db-row-ops">
+   <section class="panel"><div class="panel-head"><div><h2>Recent Sales & Orders</h2><p>Latest 6 orders</p></div><div class="table-tools"><input class="search-box" id="dbOrderSearch" placeholder="Search…" value="${st.oQuery}"><select class="filter-select" id="dbOrderStatus">${opt(['All', 'Paid', 'Pending', 'In Progress', 'Confirmed', 'Delivered'], st.oStatus)}</select><button class="text-link" data-goto="sales">All ↗</button></div></div><div id="dbOrders">${dbOrdersHTML()}</div></section>
+   <section class="panel"><div class="panel-head"><div><h2>Stock Alerts</h2><p>Low stock first</p></div><div class="table-tools"><select class="filter-select" id="dbInvStatus">${opt(['All', 'Low Stock', 'In Stock'], st.iStatus)}</select><button class="text-link" data-goto="inventory">All ↗</button></div></div><div id="dbInv">${dbInvHTML()}</div></section>
+  </div>
+  <div class="db-row db-row-3 db-row-end">
+   <section class="panel"><div class="panel-head"><div><h2>Karigar Job Work</h2><p>Metal in custody</p></div><button class="text-link" data-goto="karigar">All ↗</button></div><div id="dbJobs">${dbJobsHTML()}</div></section>
+   <section class="panel"><div class="panel-head"><div><h2>Top Customers</h2><p>By order value</p></div><button class="text-link" data-goto="customers">All ↗</button></div><div class="panel-body">${dbCustomers()}</div></section>
+   <section class="panel"><div class="panel-head"><div><h2>Attention Needed</h2><p>Tap to review</p></div></div><div class="panel-body"><div class="db-alerts">${dbAttention()}</div></div></section>
+  </div>`;
+  }
+
+  /* ---------- interactivity ---------- */
+  function dbNav(root = document) {
+    root.querySelectorAll('[data-goto]').forEach(b => { b.onclick = () => render(b.dataset.goto); b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); render(b.dataset.goto) } } });
+    root.querySelectorAll('[data-add]').forEach(b => b.onclick = () => openModal(b.dataset.add));
+    root.querySelectorAll('tr[data-toast]').forEach(r => r.onclick = () => toast(r.dataset.toast));
+  }
+  function dbDonutHover() {
+    const w = $('.db-donut-wrap'); if (!w) return;
+    const c = w.querySelector('.db-donut-c'), b = c.querySelector('b'), s = c.querySelector('small'), e = c.querySelector('em'), b0 = b.textContent, s0 = s.textContent;
+    const on = i => { w.classList.add('has-hl'); w.querySelectorAll('[data-i]').forEach(x => x.classList.toggle('hl', x.dataset.i === String(i))); const li = w.querySelector(`li[data-i="${i}"]`); b.textContent = li.dataset.pct + '%'; s.textContent = li.dataset.name; e.textContent = li.dataset.val };
+    const off = () => { w.classList.remove('has-hl'); w.querySelectorAll('.hl').forEach(x => x.classList.remove('hl')); b.textContent = b0; s.textContent = s0; e.textContent = '' };
+    w.querySelectorAll('[data-i]').forEach(x => { x.onmouseenter = x.onfocus = () => on(x.dataset.i); x.onmouseleave = x.onblur = off });
+  }
+  function dbHover() {
+    dbDonutHover();
+    const w = $('#dbTrend'); if (!w || !dbChartPts.length) return;
+    const svg = w.querySelector('svg'), tip = $('#dbTip'), gd = w.querySelector('.db-guide'), ds = w.querySelector('.db-dot.s'), dp = w.querySelector('.db-dot.p');
+    const move = e => {
+      const b = svg.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * 640;
+      let best = dbChartPts[0]; dbChartPts.forEach(p => { if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p });
+      gd.setAttribute('x1', best.x); gd.setAttribute('x2', best.x); ds.setAttribute('cx', best.x); ds.setAttribute('cy', best.ys); dp.setAttribute('cx', best.x); dp.setAttribute('cy', best.yp);
+      w.classList.add('hv'); tip.innerHTML = `<b>${best.p.label}</b><span><i style="background:#b77a12"></i>Sales <em>${dbMoney(best.p.s)}</em></span><span><i style="background:#30271c"></i>Purchases <em>${dbMoney(best.p.p)}</em></span>`;
+      const px = best.x / 640 * b.width, tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(px - tw / 2, 0), b.width - tw) + 'px'; tip.style.top = '6px'
+    };
+    w.onpointermove = move; w.onpointerdown = move; w.onpointerleave = () => w.classList.remove('hv');
+  }
+  function dbRefresh() {
+    $('#dbLive').innerHTML = dbLive();
+    $$('#dbPeriod .db-chip').forEach(b => b.classList.toggle('on', b.dataset.p === dbState.period));
+    dbNav($('#dbLive')); dbHover();
+  }
+  function dbExport() {
+    const c = dbCompute(dbState), head = ['Period', 'Sales', 'Purchases', 'Gross Profit', 'Collections'];
+    const csv = [head.join(','), ...c.pts.map(p => [`"${p.label}"`, p.s.toFixed(0), p.p.toFixed(0), p.pr.toFixed(0), p.c.toFixed(0)].join(','))].join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); a.download = `aurum-dashboard-${dbState.period}-demo.csv`; a.click(); URL.revokeObjectURL(a.href); toast('Dashboard summary exported (demo data).');
+  }
+  function dbInit() {
+    if (!$('#dbLive')) return;
+    $$('#dbPeriod .db-chip').forEach(b => b.onclick = () => { dbState.period = b.dataset.p; dbRefresh() });
+    $('#dbBranch').onchange = e => { dbState.branch = e.target.value; dbRefresh() };
+    $('#dbMetal').onchange = e => { dbState.metal = e.target.value; dbRefresh() };
+    $('#dbReset').onclick = () => { Object.assign(dbState, { period: 'month', branch: 'All', metal: 'All', oStatus: 'All', oQuery: '', iStatus: 'All' }); $('#dbBranch').value = 'All'; $('#dbMetal').value = 'All'; $('#dbOrderSearch').value = ''; $('#dbOrderStatus').value = 'All'; $('#dbInvStatus').value = 'All'; $('#dbOrders').innerHTML = dbOrdersHTML(); $('#dbInv').innerHTML = dbInvHTML(); dbRefresh(); dbNav($('#dbOrders')); dbNav($('#dbInv')); toast('Dashboard filters reset.') };
+    $('#dbExport').onclick = dbExport;
+    $('#dbOrderSearch').oninput = e => { dbState.oQuery = e.target.value; $('#dbOrders').innerHTML = dbOrdersHTML(); dbNav($('#dbOrders')) };
+    $('#dbOrderStatus').onchange = e => { dbState.oStatus = e.target.value; $('#dbOrders').innerHTML = dbOrdersHTML(); dbNav($('#dbOrders')) };
+    $('#dbInvStatus').onchange = e => { dbState.iStatus = e.target.value; $('#dbInv').innerHTML = dbInvHTML(); dbNav($('#dbInv')) };
+    dbNav($('#content')); dbHover();
+  }
+
+  window.dashboard = dbDashboard;
+  if (document.body.dataset.page === "dashboard") render("dashboard");
+});
+</script>
 </body></html>
