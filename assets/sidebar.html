@@ -1,0 +1,48 @@
+<!-- ============================================================
+     COMMON SIDEBAR  ·  partials/sidebar.html
+     Loaded into every page by assets/js/layout.js
+     (<div data-include="partials/sidebar.html"></div>).
+     Edit the menu here ONCE and it changes on every page.
+     data-href is relative to the project root; layout.js turns it
+     into the correct link for any folder depth.
+     ============================================================ -->
+<div class="mobile-overlay" id="mobileOverlay"></div>
+<aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="brand">
+        <div class="brand-mark" aria-hidden="true">✦</div>
+        <div class="brand-text"><strong>AURUM<span>ERP</span></strong><small>JEWELLERY MANAGEMENT</small></div>
+        <button class="collapse" id="collapseBtn" type="button" title="Collapse sidebar">‹</button>
+    </div>
+    <nav id="navigation">
+        <div class="nav-label">WORKSPACE</div>
+        <a class="nav-item" data-page="dashboard" data-href="dashboard/dashboard.html" href="#"><span>▦</span>
+            Dashboard</a>
+        <a class="nav-item" data-page="sales" data-href="sales/sales.html" href="#"><span>↗</span> Sales &amp; Orders
+            <em>8</em></a>
+        <a class="nav-item" data-page="purchase" data-href="purchase/purchase.html" href="#"><span>↙</span> Purchase</a>
+        <a class="nav-item" data-page="inventory" data-href="inventory/inventory.html" href="#"><span>◇</span> Inventory
+            &amp; Products</a>
+        <a class="nav-item" data-page="rates" data-href="metal-rates/metal-rates.html" href="#"><span>₹</span> Gold /
+            Silver Rates</a>
+        <a class="nav-item" data-page="karigar" data-href="karigar/karigar.html" href="#"><span>⚒</span> Karigar / Job
+            Work <em class="orange">3</em></a>
+        <div class="nav-label">FINANCE</div>
+        <a class="nav-item" data-page="payments" data-href="payments/payments.html" href="#"><span>▤</span> Payments
+            &amp; Accounts</a>
+        <a class="nav-item" data-page="expenses" data-href="expenses/expenses.html" href="#"><span>₹</span> Expenses</a>
+        <a class="nav-item" data-page="gst" data-href="gst/gst.html" href="#"><span>▧</span> GST &amp; Documents</a>
+        <a class="nav-item" data-page="customers" data-href="customers/customers.html" href="#"><span>♙</span>
+            Customers</a>
+        <a class="nav-item" data-page="suppliers" data-href="suppliers/suppliers.html" href="#"><span>♧</span>
+            Suppliers</a>
+        <div class="nav-label">INSIGHTS &amp; ADMIN</div>
+        <a class="nav-item" data-page="reports" data-href="reports/reports.html" href="#"><span>▥</span> Reports</a>
+        <a class="nav-item" data-page="users" data-href="users-&amp;-roles/users.html" href="#"><span>♙</span> Users
+            &amp; Roles</a>
+        <a class="nav-item" data-page="settings" data-href="settings/settings.html" href="#"><span>⚙</span> Settings</a>
+    </nav>
+    <div class="sidebar-bottom">
+        <div class="help-icon">?</div>
+        <div><b>Need a hand?</b><small>Explore your demo workspace</small></div><span>↗</span>
+    </div>
+</aside>

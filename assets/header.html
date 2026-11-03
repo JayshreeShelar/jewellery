@@ -1,0 +1,27 @@
+<!-- ============================================================
+     COMMON HEADER  ·  partials/header.html
+     Loaded into every page by assets/js/layout.js
+     (<div data-include="partials/header.html"></div>).
+     Logout simply opens the login page (index.html).
+     ============================================================ -->
+<header class="topbar">
+    <button class="mobile-menu" id="mobileMenu" type="button" aria-label="Open menu">☰</button>
+    <div class="breadcrumbs"><span>Workspace</span><b>/</b><strong id="crumbTitle">Dashboard</strong></div>
+    <div class="top-actions">
+        <span class="demo-pill"><i></i> DEMO DATA</span>
+        <button class="icon-btn" id="rateTop" type="button" title="Today's rates">₹</button>
+        <button class="icon-btn notification" id="notifyBtn" type="button" title="Notifications">♧<i></i></button>
+        <div class="top-user-wrap">
+            <button class="top-user" id="adminMenuToggle" type="button" aria-haspopup="true" aria-expanded="false">
+                <div class="avatar small">AU</div>
+                <div><b>Admin User</b><small>Admin</small></div>
+                <span class="admin-chevron">⌄</span>
+            </button>
+            <div class="admin-dropdown" id="adminDropdown" hidden>
+                <div class="admin-dropdown-head"><b>Admin User</b><small>admin@aurumerp.com</small></div>
+                <a class="admin-link" data-href="settings/settings.html" href="#"><span>⚙</span> Settings</a>
+                <a class="admin-logout" data-href="index.html" href="#"><span>↪</span> Logout</a>
+            </div>
+        </div>
+    </div>
+</header>
